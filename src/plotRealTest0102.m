@@ -1,0 +1,22 @@
+load results/real_01_02.mat;
+prec=result.prec;
+reca=result.reca;
+sample_set = 10:10:150; h=4;
+figure(1); % plot precision
+box on; axis equal; hold on; legend on; xlim([10,151]); ylim([0,1]); axis square;
+plot(sample_set,prec(:,1),'-.k*','DisplayName',['SVC: h=',num2str(h),' c=0.05']);
+plot(sample_set,prec(:,2),'-.k+','DisplayName',['SVC: h=',num2str(h),' c=0.1']);
+plot(sample_set,prec(:,3),'-.kx','DisplayName',['SVC: h=',num2str(h),' c=0.2']);
+plot(sample_set,prec(:,4),'-ks','DisplayName',['iSVC: h=',num2str(h),' c=0.05\n given 5 outliers']);
+plot(sample_set,prec(:,5),'-ko','DisplayName',['iSVC: h=',num2str(h),' c=0.05\n given 5 normals']);
+plot(sample_set,prec(:,6),'-k^','DisplayName',['iSVC: h=',num2str(h),' c=0.05\n given 5 normals/10 outliers']);
+title('Precision on detecting various sizes of outliers (digit 0)');
+figure(2);
+box on; axis equal; hold on; legend on; xlim([10,151]); ylim([0,1]); axis square;
+plot(sample_set,reca(:,1),'-.b*','DisplayName',['SVC: h=',num2str(h),' c=0.05']);
+plot(sample_set,reca(:,2),'-.b+','DisplayName',['SVC: h=',num2str(h),' c=0.1']);
+plot(sample_set,reca(:,3),'-.bx','DisplayName',['SVC: h=',num2str(h),' c=0.2']);
+plot(sample_set,reca(:,4),'-bs','DisplayName',['iSVC: h=',num2str(h),' c=0.05\n given 5 outliers']);
+plot(sample_set,reca(:,5),'-bo','DisplayName',['iSVC: h=',num2str(h),' c=0.05\n given 5 normals']);
+plot(sample_set,reca(:,6),'-b^','DisplayName',['iSVC: h=',num2str(h),' c=0.05\n given 5 normals/10 outliers']);
+title('Recall on detecting various sizes of outliers (digit 0)');
