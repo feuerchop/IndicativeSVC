@@ -1,5 +1,15 @@
-# let's build a SVM demo
-
+"""
+README:
+GUI demo script for SVC
+Click on the canvas adds a sample,
+if you hold the <ctrl>+right click,
+then you give a supervised positive
+(outlier), if you hold the <ctrl>+
+left click, then you give a supervised
+negative (normal sample). Tunning par-
+-ameters will automatically update the
+classifier.
+"""
 from Tkinter import *
 import numpy as np
 import matplotlib
