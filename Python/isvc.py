@@ -26,6 +26,7 @@ class iSVC:
             self.rid = None                 # Index of the SV for R
             self.K = None                   # cache of the kernel matrix on X
             self.C = C                      # regularizer coef, default 1, no outlier is allowed
+            self.c_weighted = C             # regularizer coef reweighted by indicative labels
             self.gamma = gamma              # param for rbf/poly kernel, default 1
             self.coef0 = coef0              # param for polynomial kernel, default 1
             self.degree = degree            # param for polynomial kernel, default 3
@@ -54,10 +55,12 @@ class iSVC:
                    coef0=self.coef0, degree=self.degree)
         q = cvxmatrix(-K.diagonal(), tc='d')
 
+        #TODO: make it a separate function call
+
         influence = np.zeros(n) # f_i in the paper
         influence_anomaly = np.zeros(n)
         influence_normal = np.zeros(n)
-        impact = np.zeros(n) # c_i in the paper
+        c_weighted = np.zeros(n) # c_i in the paper
 
         anomaly_indices = np.where(y==1)[0]
         normal_indices = np.where(y==-1)[0]
@@ -90,13 +93,13 @@ class iSVC:
 
 
             if (influence[i]>np.exp(-2)):
-                impact[i] = self.C*(1-influence[i])/(1-np.exp(-2))+(1/np.size(X,0))*(influence[i]-np.exp(-2))/(1-np.exp(-2))
+                c_weighted[i] = self.C*(1-influence[i])/(1-np.exp(-2))+(1/np.size(X,0))*(influence[i]-np.exp(-2))/(1-np.exp(-2))
             elif (influence[i]<(-(np.exp(-2)))):
-                impact[i] = self.C*(1-np.abs(influence[i]))/(1-np.exp(-2))+(np.abs(influence[i])-np.exp(-2))/(1-np.exp(-2))
+                c_weighted[i] = self.C*(1-np.abs(influence[i]))/(1-np.exp(-2))+(np.abs(influence[i])-np.exp(-2))/(1-np.exp(-2))
             else:
-                impact[i]=0
+                c_weighted[i]=0
 
-            if (impact[i]<0):
+            if (c_weighted[i]<0):
                 print "Negative Impact!!!"
                 exit(-1)
 
@@ -106,7 +109,8 @@ class iSVC:
             P = cvxmatrix(2*K, tc='d')
             G = cvxmatrix(np.vstack((-np.eye(n), np.eye(n))), tc='d')                   # lhs box constraints
             #h = cvxmatrix(np.concatenate((np.zeros(n), self.C*np.ones(n))), tc='d')     # rhs box constraints
-            h = cvxmatrix(np.concatenate((np.zeros(n), impact)), tc='d') # zeros for >=0, impact for <=c_i
+            # TODO: c values for normal samples need to be minused by 2*self.eps to make it strong inequality
+            h = cvxmatrix(np.concatenate((np.zeros(n), c_weighted)), tc='d') # zeros for >=0, c_weighted for <=c_i
             # optimize using cvx solver
 
             Aeq = np.zeros((len(anomaly_indices),n))
@@ -114,7 +118,7 @@ class iSVC:
             i=0
             for ind in anomaly_indices:
                 Aeq[i,ind]=1
-                beq[i]=impact[ind]
+                beq[i]=c_weighted[ind]
                 i+=1
 
             A = cvxmatrix(Aeq, tc='d')
@@ -123,7 +127,7 @@ class iSVC:
             sol = solvers.qp(P,q,G,h,A,b,initvals=cvxmatrix(np.zeros(n), tc='d'))
 
         if self.method is 'smo':
-            #TODO: apply SMO algorithm    
+            #TODO: apply SMO algorithm
             alpha = None
             
         # setup SVC model
@@ -132,9 +136,9 @@ class iSVC:
         self.sv_inx = inx       
         self.alpha = alpha[inx]
         self.nsv = inx.size
-        self.sv_ind = np.where((np.ravel(alpha) > self.eps) & (np.ravel(alpha) < impact-self.eps))[0]
-        self.bsv_ind= np.where(np.ravel(alpha) >= impact-self.eps)[0]
-        self.inside_ind = np.where(np.ravel(alpha) < impact-self.eps)[0]
+        self.sv_ind = np.where((np.ravel(alpha) > self.eps) & (np.ravel(alpha) < c_weighted-self.eps))[0]
+        self.bsv_ind= np.where(np.ravel(alpha) >= c_weighted-self.eps)[0]
+        self.inside_ind = np.where(np.ravel(alpha) < c_weighted-self.eps)[0]
         k_inx = K[inx[:,None], inx]                                                     # submatrix of K(sv+bsv, sv+bsv)
         k_sv = K[self.sv_ind[:,None], self.sv_ind]                                      # submatrix of K(sv,sv)
         k_bsv = K[self.bsv_ind[:,None], self.bsv_ind]                                   # submatrix of K(bsv,bsv)
@@ -155,9 +159,9 @@ class iSVC:
             #Step 2: Labeling cluster index by using CG
             self.predict(X)
 
-        self.impact = impact
-        self.influence = influence
-        self.res_alpha = alpha
+        self.c_weighted = c_weighted
+        # self.influence = influence
+        # self.res_alpha = alpha
 
 
     def incremental(self, x_, y_=None):
