@@ -12,8 +12,6 @@ classifier.
 """
 from Tkinter import *
 import numpy as np
-import matplotlib
-matplotlib.use("TkAgg")
 import matplotlib.pylab as plt
 from matplotlib.contour import ContourSet
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
