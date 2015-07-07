@@ -170,8 +170,6 @@ def gen_noise_gauss(n_samples=100, noise_level=.1, u=[0,0], cov=0.5):
     gauss = np.random.multivariate_normal(np.array(u), sigma, neg_size)
     # TODO: min,max computed from gaussian
     outliers = np.random.uniform(low=-4, high=4, size=(pos_size, 2))
-    print "outliers"
-    print outliers
     X = np.r_[gauss, outliers]
     y = np.r_[-np.ones(neg_size), np.ones(pos_size)]
     return X, y

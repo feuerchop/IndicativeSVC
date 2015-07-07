@@ -36,34 +36,17 @@ class iSVC:
             self.labeling = labeling        # call labeling process, default False
             self.cached = cached            # wether store K in cache
             self.display = display          # show details of solver
-            
-    #===========================================================================
-    # fit function: 
-    # X: nxd data set
-    #===========================================================================
-    def fit(self, X, y=None):
-        if self.display:
-            solvers.options['show_progress'] = True
-        else:
-            solvers.options['show_progress'] = False
-        
-        n = X.shape[0]
-        
-        # Step 1: Optimizing the SVDD dual problem.....
-        K = kernel(X, metric=self.kernel, n_jobs=1,
-                   filter_params=True, gamma=self.gamma,
-                   coef0=self.coef0, degree=self.degree)
-        q = cvxmatrix(-K.diagonal(), tc='d')
 
-        #TODO: make it a separate function call
+
+    def influence(self, K, y):
+
+        n = len(y)
 
         influence = np.zeros(n) # f_i in the paper
         influence_anomaly = np.zeros(n)
         influence_normal = np.zeros(n)
         c_weighted = np.zeros(n) # c_i in the paper
 
-        anomaly_indices = np.where(y==1)[0]
-        normal_indices = np.where(y==-1)[0]
 
         for i in range(0, n):
             sum_kernels_anomaly = 0
@@ -93,7 +76,7 @@ class iSVC:
 
 
             if (influence[i]>np.exp(-2)):
-                c_weighted[i] = self.C*(1-influence[i])/(1-np.exp(-2))+(1/np.size(X,0))*(influence[i]-np.exp(-2))/(1-np.exp(-2))
+                c_weighted[i] = self.C*(1-influence[i])/(1-np.exp(-2))+(1/n)*(influence[i]-np.exp(-2))/(1-np.exp(-2))
             elif (influence[i]<(-(np.exp(-2)))):
                 c_weighted[i] = self.C*(1-np.abs(influence[i]))/(1-np.exp(-2))+(np.abs(influence[i])-np.exp(-2))/(1-np.exp(-2))
             else:
@@ -103,6 +86,41 @@ class iSVC:
                 print "Negative Impact!!!"
                 exit(-1)
 
+        return c_weighted
+
+
+
+    #===========================================================================
+    # fit function: 
+    # X: nxd data set
+    #===========================================================================
+    def fit(self, X, y=None):
+        if self.display:
+            solvers.options['show_progress'] = True
+        else:
+            solvers.options['show_progress'] = False
+        
+        n = X.shape[0]
+        
+        # Step 1: Optimizing the SVDD dual problem.....
+        K = kernel(X, metric=self.kernel, n_jobs=1,
+                   filter_params=True, gamma=self.gamma,
+                   coef0=self.coef0, degree=self.degree)
+        q = cvxmatrix(-K.diagonal(), tc='d')
+
+        #TODO: make it a separate function call
+
+        labeled_indices = np.where(y!=0)[0]
+        anomaly_indices = np.where(y==1)[0]
+        normal_indices = np.where(y==-1)[0]
+
+
+        if (len(labeled_indices)):
+            c_weighted = self.influence(K,y)
+        else:
+            c_weighted = self.C*np.ones(n)
+
+
         # solver
         if self.method is 'qp':
 
@@ -110,7 +128,13 @@ class iSVC:
             G = cvxmatrix(np.vstack((-np.eye(n), np.eye(n))), tc='d')                   # lhs box constraints
             #h = cvxmatrix(np.concatenate((np.zeros(n), self.C*np.ones(n))), tc='d')     # rhs box constraints
             # TODO: c values for normal samples need to be minused by 2*self.eps to make it strong inequality
-            h = cvxmatrix(np.concatenate((np.zeros(n), c_weighted)), tc='d') # zeros for >=0, c_weighted for <=c_i
+
+
+            c_weighted_eps = np.copy(c_weighted)
+            c_weighted_eps[normal_indices]-=2*self.eps
+
+
+            h = cvxmatrix(np.concatenate((np.zeros(n), c_weighted_eps)), tc='d') # zeros for >=0, c_weighted for <=c_i
             # optimize using cvx solver
 
             Aeq = np.zeros((len(anomaly_indices),n))
@@ -126,17 +150,23 @@ class iSVC:
             # optimize using cvx solver
             sol = solvers.qp(P,q,G,h,A,b,initvals=cvxmatrix(np.zeros(n), tc='d'))
 
+
+
+
         if self.method is 'smo':
             #TODO: apply SMO algorithm
             alpha = None
             
         # setup SVC model
         alpha = np.asarray(sol['x'])
+
+
         inx = np.where(alpha > self.eps)[0]  
         self.sv_inx = inx       
         self.alpha = alpha[inx]
         self.nsv = inx.size
         self.sv_ind = np.where((np.ravel(alpha) > self.eps) & (np.ravel(alpha) < c_weighted-self.eps))[0]
+
         self.bsv_ind= np.where(np.ravel(alpha) >= c_weighted-self.eps)[0]
         self.inside_ind = np.where(np.ravel(alpha) < c_weighted-self.eps)[0]
         k_inx = K[inx[:,None], inx]                                                     # submatrix of K(sv+bsv, sv+bsv)

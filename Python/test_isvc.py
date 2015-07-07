@@ -20,7 +20,7 @@ n_perm = np.random.permutation(n) # random partition for labeling
 labeled_fraction = 0.1
 
 num_labels = int(np.ceil(labeled_fraction*n)) # number of labeled examples based on the fraction of dataset size
-print "Number of labels used: " + str(num_labels)
+#print "Number of labels used: " + str(num_labels)
 y_semisupervised[n_perm[0:num_labels]] = y[n_perm[0:num_labels]].reshape(num_labels,1) # label selected examples
 #x_labeled = X[n_perm[0:num_labels], :]
 #y_labeled = y[n_perm[0:num_labels]]
@@ -60,20 +60,20 @@ view = gui.View(root, ctrl)
 model.views.append(view)
 
 
-for anomaly in x_labeled_anomaly:
-    model.add_sample(anomaly[0], anomaly[1], 1)
+# for anomaly in x_labeled_anomaly:
+#     model.add_sample(anomaly[0], anomaly[1], 1)
+#
+#
+# for normal in x_labeled_normal:
+#     model.add_sample(normal[0], normal[1], -1)
+#
+#
+# for unknown in x_labeled_unknown:
+#     model.add_sample(unknown[0], unknown[1], 0)
 
 
-for normal in x_labeled_normal:
-    model.add_sample(normal[0], normal[1], -1)
-
-
-for unknown in x_labeled_unknown:
-    model.add_sample(unknown[0], unknown[1], 0)
-
-
-model_params = {'C':0.01, 'gamma':0.5, 'coef0':1, 'degree':3, 'kernel':'rbf'}
-model.fit(model_params)
+# model_params = {'C':0.01, 'gamma':0.5, 'coef0':1, 'degree':3, 'kernel':'rbf'}
+# model.fit(model_params)
 
 
 
