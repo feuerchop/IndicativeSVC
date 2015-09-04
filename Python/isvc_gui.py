@@ -12,8 +12,6 @@ classifier.
 """
 from Tkinter import *
 import numpy as np
-import matplotlib
-matplotlib.use("TkAgg")
 import matplotlib.pylab as plt
 from matplotlib.contour import ContourSet
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
@@ -50,8 +48,7 @@ class Model(object):
                         degree=params['degree'],
                         coef0=params['coef0'],
                         kernel=params['kernel'])
-        # TODO: replace it with supervised version
-        self.clf.fit(X)
+        self.clf.fit(X,y)
         self.is_fitted = True
         self.changed("model_fitted")
 
@@ -94,7 +91,7 @@ class View(object):
         self.toolbar.degree.trace('w', self.set_degree)
 
     def press_ctrl(self, event):
-        self.canvas.get_tk_widget().config(cursor="hand")
+        #self.canvas.get_tk_widget().config(cursor="hand")
         self.is_ctrl_pressed = True
 
     def release_ctrl(self, event):
@@ -122,8 +119,10 @@ class View(object):
         if event.xdata and event.ydata:
             if self.is_ctrl_pressed:
                 if event.button == 1:
+
                     self.controller.add_sample(event.xdata, event.ydata, -1)
                 elif event.button == 3:
+
                     self.controller.add_sample(event.xdata, event.ydata, 1)
             else:
                 self.controller.add_sample(event.xdata, event.ydata, 0)
@@ -139,20 +138,23 @@ class View(object):
     def update(self, status, model):
         # click the canvas to add a point
         if status == "sample_added":
-            if model.data[-1][2] == 1:
-                # given anomaly
-                self.ax.plot(model.data[-1][0], model.data[-1][1], 'ro', ms=6)
-                self.ax.plot(model.data[-1][0], model.data[-1][1], 'k+', ms=10)
-            elif model.data[-1][2] == -1:
-                # given normal
-                self.ax.plot(model.data[-1][0], model.data[-1][1], 'bo', ms=6)
-                self.ax.plot(model.data[-1][0], model.data[-1][1], 'k+', ms=10)
-            else:
-                # unknown label
-                self.ax.plot(model.data[-1][0], model.data[-1][1], 'o', mfc='k', ms=4)
-            if model.is_fitted is True:
+             if model.data[-1][2] == 1:
+                 # given anomaly
+
+                 self.ax.plot(model.data[-1][0], model.data[-1][1], 'ro', ms=6)
+                 self.ax.plot(model.data[-1][0], model.data[-1][1], 'k+', ms=10)
+             elif model.data[-1][2] == -1:
+                 # given normal
+
+                 self.ax.plot(model.data[-1][0], model.data[-1][1], 'bo', ms=6)
+                 self.ax.plot(model.data[-1][0], model.data[-1][1], 'k+', ms=10)
+             else:
+                 # unknown label
+                 self.ax.plot(model.data[-1][0], model.data[-1][1], 'o', mfc='k', ms=4)
+             if model.is_fitted is True:
                 # update classifier with new data or parameters
-                self.controller.fitmodel(event=None)
+                 self.controller.fitmodel(event=None)
+
 
         # clear the canvas and initialize axes again
         if status == "sample_cleared":
@@ -168,14 +170,31 @@ class View(object):
 
         if status == "model_fitted":
             self.remove_surface()
+
+            n = len(model.data)
+
+            labels = model.clf.y
+            for i in range(len(labels)):
+                if (labels[i]==1):
+                    self.ax.plot(model.data[i][0], model.data[i][1], 'ro', ms=4)
+                elif (labels[i]==-1):
+                    self.ax.plot(model.data[i][0], model.data[i][1], 'bo', ms=4)
+                else:
+                    self.ax.plot(model.data[i][0], model.data[i][1], 'go', ms=4)
+
+
+
             self.plot_contour(model)
             #TODO: output model properties in console
             # self.console.insert(END, "%s fitted on %d samples successfully!\n" % (type(model.clf).__name__, len(model.data)))
 
+
+
+
         self.canvas.draw()
 
     def init_ax(self):
-        xlim, ylim = [0, 4], [0, 4]
+        xlim, ylim = [-4, 4], [-4, 4]
         self.ax.set(xticks=[], yticks=[])
         self.ax.set(xlim=xlim, ylim=ylim)
 

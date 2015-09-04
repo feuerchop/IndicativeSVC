@@ -163,6 +163,7 @@ def gen_noise_gauss(n_samples=100, noise_level=.1, u=[0,0], cov=0.5):
     :param cov: gaussian covariance
     :return: dataset X => y in [+1, -1]
     """
+   # np.random.seed(0)
     neg_size = int(n_samples*(1-noise_level))
     pos_size = n_samples - neg_size
     sigma = np.diag(np.ones(2)*cov)
