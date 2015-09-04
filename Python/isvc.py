@@ -9,7 +9,7 @@ class iSVC:
     given partially labelled y
     """
     def __init__(self, kernel='rbf', method='qp',
-                 C=1.0, gamma=0.5, coef0=1, degree=3, eps=1e-3,
+                 C=1.0, gamma=0.5, coef0=1, degree=3, eps=1e-5,
                  labeling=False, cached=False, display=False):
             self.eps = eps
             self.method = method            # optimization methods, default use qp-solver
@@ -126,14 +126,8 @@ class iSVC:
 
             P = cvxmatrix(2*K, tc='d')
             G = cvxmatrix(np.vstack((-np.eye(n), np.eye(n))), tc='d')                   # lhs box constraints
-            #h = cvxmatrix(np.concatenate((np.zeros(n), self.C*np.ones(n))), tc='d')     # rhs box constraints
-            # TODO: c values for normal samples need to be minused by 2*self.eps to make it strong inequality
-
-
             c_weighted_eps = np.copy(c_weighted)
             c_weighted_eps[normal_indices]-=2*self.eps
-
-
             h = cvxmatrix(np.concatenate((np.zeros(n), c_weighted_eps)), tc='d') # zeros for >=0, c_weighted for <=c_i
             # optimize using cvx solver
 
@@ -295,7 +289,7 @@ class iSVC:
 
     # predict labels on Xtt 
     def predict_y(self, Xtt):
-        dist_tt = self.kdist2(Xtt)
+        dist_tt = self.decision_function(Xtt)
         y = -1*np.ones(Xtt.shape[0])
         y[dist_tt.ravel() > self.r] = 1
         return y
