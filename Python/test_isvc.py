@@ -1,5 +1,3 @@
-__author__ = 'morgan'
-
 # main function to test the SVC Model
 from matplotlib import pyplot as plt
 import utils
@@ -7,15 +5,17 @@ from isvc import iSVC
 import numpy as np
 import isvc_gui as gui
 
+__author__ = 'morgan'
+
 clf = iSVC(display=True, gamma=1)
-#generate data
+# generate data
 X, y = utils.gen_noise_gauss(100)
-n = np.size(X,0)
+n = np.size(X, 0)
 big_x, big_y = utils.getBoxbyX(X, grid=30)
 big_xy = np.c_[big_x.reshape(big_x.size, 1), big_y.reshape(big_x.size, 1)]
 # add supervised labels
-y_semisupervised= np.zeros((n,1))
-n_perm = np.random.permutation(n) # random partition for labeling
+y_semisupervised = np.zeros((n, 1))
+n_perm = np.random.permutation(n)  # random partition for labeling
 
 labeled_fraction = 0.1
 
@@ -78,5 +78,3 @@ model.views.append(view)
 
 
 root.mainloop()
-
-

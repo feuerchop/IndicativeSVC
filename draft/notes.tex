@@ -1,0 +1,215 @@
+% This is LLNCS.DEM the demonstration file of
+% the LaTeX macro package from Springer-Verlag
+% for Lecture Notes in Computer Science,
+% version 2.4 for LaTeX2e as of 16. April 2010
+%
+\documentclass{llncs}
+%
+\usepackage{makeidx}  % allows for indexgeneration
+\usepackage{amsmath}
+\usepackage{amsfonts}
+
+\newcommand{\ie}{\emph{i.e.}}
+\newcommand{\eg}{\emph{e.g.}}
+\newcommand{\etal}{\emph{et al.}}
+\newcommand{\etc}{\emph{etc.}}
+\newcommand{\cf}{\emph{cf.}}
+\newcommand{\diff}[2]{\frac{\partial #1}{\partial #2}}
+%\newcommand{\diff}[2]{\nabla_{#2}{#1}}
+\newcommand{\vct}[1]{\ensuremath{\boldsymbol{#1}}} %for greek letters
+\newcommand{\mat}[1]{\ensuremath{\mathbf{#1}}}
+\newcommand{\set}[1]{\ensuremath{\mathcal{#1}}}
+\newcommand{\con}[1]{\ensuremath{\mathsf{#1}}}
+\newcommand{\T}{\ensuremath{\top}}
+\newcommand{\mycomment}[1]{\textcolor{red}{#1}}
+\newcommand{\ind}[1]{\ensuremath{\mathbbm 1_{#1}}}
+\newcommand{\argmax}{\operatornamewithlimits{\arg\,\max}}
+\newcommand{\erf}{\text{erf}}
+\newcommand{\argmin}{\operatornamewithlimits{\arg\,\min}}
+\newcommand{\bmat}[1]{\begin{bmatrix}#1\end{bmatrix}}
+
+
+\begin{document}
+	
+	\title{Incremental Semi-supervised Support Vector Clustering}
+	
+	\author{Huang Xiao\inst{1}, Bojan Kolosnjaji}
+	%
+	%
+	
+	\maketitle              % typeset the title of the contribution
+	
+	\begin{abstract}
+		
+		
+		\keywords{Incremental learning, semi-supervised clustering, novelty detection}
+	\end{abstract}
+	%
+	\section{One-class SVM}
+	Here is an introduction of how one-class SVM works. It is based on the work by \cite{schoekopf99}.
+	Let's consider the training data,
+	\begin{equation}
+		x_1,\ldots , x_l \in \mathcal{X}
+	\end{equation}
+	where $l$ is the number of training samples. We pick up Kernel function defined as,
+	\begin{equation}
+		k\left(x, y\right)=\left\langle\Phi\left(x\right)\cdot{•}\Phi\left(y\right)\right\rangle
+	\end{equation}
+	For instance, the widely used Gaussian kernel,
+	\begin{equation}
+		k\left(x,y\right) = e^{-\lambda\|x-y\|^2}
+	\end{equation}
+	Now the functional $f\left(x\right)$ defines a hyperplane separating input data $\mathcal{X}$ into two classes, where most of samples
+	are classified as $+1$, a minority of data are classified as $-1$. To solve this problem, we have following quadratic problem:
+	\begin{equation}
+		\underset{w \in F, \vct{\xi} \in \mathbb{R}^l, \rho \in \mathbb{R}}{\argmin}  \,\,\, \frac{1}{2}\|w\|^2+\frac{1}{vl}\sum_i\xi_i-\rho
+	\end{equation}
+	\begin{equation}
+		\text{subject to}\,\,\, \left(w\cdot\Phi\left(x_i\right)\right)\geq \rho - \xi_i, \,\,\, \xi_i \geq 0
+	\end{equation}
+	The decision function is based on 
+	\begin{equation}
+		y\left(x\right)=sgn\left( \sum_i\alpha_i k\left(x_i,x\right) - \rho\right)
+	\end{equation}
+	The problem is solved by Lagrangian multipliers, and converted to Dual. We also note that for each point $x_i$ with $0<\alpha_i<1/\left(vl\right)$,
+	it lies exactly on the hyperplane such that we can get $\rho$ by any of these samples (Support Vectors).
+	\begin{equation}
+		\rho = \sum_j \alpha_jk\left(x_j, x_i\right)
+	\end{equation}
+	However, solving this dual problem with the box constraint given is numerically not stable, while the dual variables $\vct{\alpha}$ are in fact very small. Thus, in LibSVM\cite{libsvm} we solve the scaled dual problem as follows,
+	\begin{eqnarray}
+		\set W = & \min  \alpha^T K \alpha \\
+		\text{subject to} &  \sum_i\alpha_i = vl \nonumber \\ 
+		& 0 \leq \alpha_i \leq 1, \,\,\, i=1,\cdots, l \nonumber
+	\end{eqnarray}
+	Therefore, in LibSVM implementation both the dual variables $\left\lbrace\alpha\right\rbrace$ and the intercept $\rho$ are scaled such that the decision function is also scaled by $vl$.  
+	
+%	\section{Gradient Ascend Poisoning Attack}
+%	Now let us consider an attack scenario, where the adversary injects a malicious sample $x_c$ in training set $\mathcal{D}_{tr}$ to form the contaminated training set $\mathcal{D}_c$. The objective of the adversary is defined as,
+%	\begin{equation}
+%		\underset{x_c \in \mathbb{R}^d}{\argmin} \,\,\, \mathcal{W} = \frac{1}{2}\|w\|^2+\frac{1}{vl}\sum_i\xi_i-\rho
+%	\end{equation}
+
+\section{Incremental One-Class SVMs}
+Here we introduce the incremental version of OC-SVMs based on incremental SVMs \cite{caugh01}.
+Gradient of $\set W$ w.r.t. $\alpha_i$ is,
+\[
+g_i = \diff{\set W}{\alpha_i} = \sum_j\alpha_j Q_{i,j} = f(x_i)+\rho
+\]
+where $f(x_i)=w\cdot \Phi(x_i)-\rho$ and $Q_{i,j}=k(x_i,x_j)$. We also denote a new function 
+\[
+h_i=g_i-\rho = \left\lbrace 
+\begin{array}{ll}
+>0 & \,\,\, \alpha_i=0 \text{ and } x_i \in \set R \\
+=0 & \,\,\, 0<\alpha_i<1 \text{ and } x_i \in \set S \\
+<0 & \,\,\, \alpha_i=1 \text{ and } x_i \in \set E
+\end{array} \right.
+\]
+where $\set S, \set R, \set E$ denote set of support vectors, reserved vectors, and error vectors. 
+Adding a new point $x_c$ into the training set $\set X$, we have initially set $\alpha_c=0$,
+\begin{eqnarray}
+\Delta h_i =  (Q_{ic}-Q_{sc})\Delta\alpha_c + \sum_{j\in \set S}(Q_{ij}-Q_{sj})\Delta\alpha_j,
+\,\,\, x_i \in \set X \cup x_c \\
+\Delta\alpha_c+\sum_{j\in\set S}\Delta\alpha_j  = v
+\end{eqnarray}
+Note that $x_s$ is any support vector in $\set S$, for convenience, we simply use $x_{s_1}$. For $x_i \in \set S$, we have $h_i\equiv 0$ such that we can construct a linear equation system,
+
+\begin{equation}
+\mathcal{Q}\cdot
+\begin{bmatrix}
+v\\
+\Delta\alpha_{s_1}\\
+\Delta\alpha_{s_2}\\
+\vdots \\
+\Delta\alpha_{s_v}
+\end{bmatrix} = -\begin{bmatrix}
+1 \\
+%0\\
+Q_{s_2 c}-Q_{s_1 c}\\
+\vdots \\
+Q_{s_v c}-Q_{s_1 c}
+\end{bmatrix}\Delta\alpha_c
+\end{equation}
+where we have $(s_1, \cdots,s_v)$ are the indices for $\set S$ and $\|\set S\|=v$, and the $\mathcal{Q}$ is $v\times (v+1)$ matrix, 
+\[
+\mathcal{Q} = \begin{bmatrix}
+-1 & 1 & \cdots & 1 \\
+%0 & 0 & \cdots & 0 \\
+0 & Q_{s_2 s_1}-Q_{s_1 s_1} & \cdots & Q_{s_2 s_v}-Q_{s_1 s_v} \\
+\vdots & \vdots & \ddots & \vdots \\
+0 & Q_{s_v s_1}-Q_{s_1 s_1} & \cdots & Q_{s_v s_v}-Q_{s_1 s_v}
+\end{bmatrix}
+\]
+
+\section{Reweighed Regularization}
+Given a set of supervised labels $\set D_M = \left\{x_i, y_i\right\}_{i=1}^M$, where $y_i=\left\{+1, -1\right\}$, we compute the impact scores of relevant samples with respect to their kernel similarity to the given labeled samples, 
+\[
+f(x_i) = \frac{1}{M_i^+}\sum_{j=1}^{|M_i^+|}k(x_i, x_j) - \frac{1}{M_i^-}\sum_{l=1}^{|M_i^-|}k(x_i, x_l)
+\]
+Moreover, we restrict the sets $M_i^+$ and $M_i^-$ as being set $D_M^i = \left\{x | k(x, x_i) \leq h \right\}$
+
+\section{Support Vector Clustering}
+Here we introduce another formulation of one-class SVM firstly presented in Ben-hur's work \cite{benhur_svc}. Alternatively we can search for a compact enough hypersphere in the feature space such that the ball enclose most of the training samples while permitting a small portion of data (outliers) lying outside the hypersphere. This hypersphere is defined by the radius $R$ and a center $\vct a$, then the objective of this problem is to find a smallest hyperball to enclose all the training samples.
+Similar as SVM, a soft margin formulation is adopted by introducing slack variables $\left\{\xi_i\right\}_{i=1}^N$, where $\xi_i\geq 0$, we have the objective function, 
+\begin{align}
+& \min_{R} R^2  + C\sum_{i}\xi_i\\ \nonumber
+\text{s.t. } &
+\|\Phi(x_i) - \vct a\|^2 \leq R^2+\xi_i  \\ \nonumber
+& \xi_i \geq 0, \,\, \forall i \in \left\{1, \ldots, N \right\}
+\end{align}
+Similar as described in \cite{benhur_svc}, we leverage Lagrangian multipliers to solve this problem, such that we get,
+\begin{align}
+	L=R^2-\sum_j\left(R^2+\xi_j-\|\Phi(x_j)-\mathbf{a}\|^2\right)\alpha_j-\sum_j\xi_j\mu_j+\sum_j C\xi_j,
+\end{align}
+Moreover, we derive optimal conditions as follows,
+\begin{align}
+\sum\alpha_j=1, \label{eq:opt:1} \\ 
+\mathbf{a}=\sum\alpha_j\Phi(x_j), \label{eq:opt:2} \\ 
+\alpha_j=C-\mu_j \label{eq:opt:3}
+\end{align}
+According to KKT conditions, we also have,
+\begin{align}
+	\xi_j\mu_j=0, \label{eq:kkt:1} \\ 
+	\left(R^2+\xi_j-\|\Phi(x_j)-\mathbf{a}\|^2\right)\alpha_j=0 \label{eq:kkt:2}
+\end{align}
+Substitute Eq.\eqref{eq:opt:1}-\eqref{eq:kkt:2} back into the Lagrangian, we obtain the Wolfra dual form as,
+\begin{align}
+	\mathcal{W}=\sum_{i,j}\alpha_i\alpha_j k(x_i,x_j) - \sum_jk(x_j,x_j)\alpha_j,  \label{eq:svc_dual_obj} \\
+	\text{s.t.}\quad 0\leq\alpha_j\leq C, \; j=1,\ldots,N. \label{eq:svc_dual_constraints}
+\end{align}
+where $k(x_i, x_j) = \left\langle \Phi(x_i), \Phi(x_j) \right\rangle$ denote the kernel function. To solve this quadratic programing problem with box constraints, we will employ the SMO-type optimizer introduced in the following section. 
+
+\section{SMO Optimization}
+In this section, we employed the SMO-type optimization technique to solve the dual problem, originally presented in \cite{platt99}. However, we apply the working set selection algorithm using second order information described in Fan \etal, \cite{fan05jmrl}. 
+
+The SMO-type optimization proposed to solve the QP problem in an iterative way, where only two variables are considered at each iteration. Due to the linear constraint in Eq.\eqref{eq:svc_dual_constraints}, this is the minimal number of variables permitted at each iteration, such that the objective function is guaranteed to reduced at every round. For simplicity, we denote $\alpha_1$ and $\alpha_2$ as the first and the second variables, whereas we know the following conditions hold given the rest variables unchanged, 
+\begin{eqnarray}
+\alpha_1 + \alpha_2 = 1 - \sum_{i=3}^N \alpha_i = \Delta \\
+L = \max(0, \Delta - C) \,\text{ and }\, H = \min(C, \Delta)
+\end{eqnarray}
+Here we explicitly express the lower bound $L$ and upper bound $H$ for $\alpha_2$. The objective can be now formulated as function of $\alpha_1$ and $\alpha_2$.
+
+\begin{eqnarray}
+\mathcal{W} = \alpha_1^2k_{11}+\alpha_2^2k_{22}+2\alpha_1\alpha_2k_{12}+2\alpha_1V_1+2\alpha_2V_2\\ \nonumber - \alpha_1k_{11}-\alpha_2k_{22} + \underbrace{\sum_{i,j=3}^N\alpha_i\alpha_jk_{ij}-\sum_{j=3}^N\alpha_jk_{jj}}_{\text{constant}}
+\end{eqnarray}
+where $V_i = \sum_{j=3}^N\alpha_jk_{ij}$ and we replace $\alpha_1$ with $\Delta-\alpha_2$ and take the first derivative, we can get the extremum when the derivative is $0$, that is, 
+\begin{eqnarray}
+\alpha_2 = \alpha_2^* + \frac{f(x_2)-f(x_1)}{2\eta}
+\end{eqnarray}
+where $\eta=k_{11}+k_{22}-2k_{12}$ is the second derivative of objective $\mathcal{W}$ and $f(x_i)$ is the squared distance of $x_i$ to the center.  Therefore, we get the update equation of $\alpha_2$ given the $\alpha_1$, which will maximally reduce the objective function. However, this is the updating rule when the second derivative is strictly positive, if $\eta <=0$, this implies the extremum of the objective function occurs at the bounds, therefore if $\eta <=0$ we compute the objective functions at both bounds and pick the lower value as the new $\alpha_2$.
+\begin{align}
+W_L - W_H = & (\Delta^2-\Delta)(k_{11} - k_{22})+ 2\Delta(V_1-V_2),
+\,\, \text{if } L=0, H=\Delta \\
+W_L - W_H = & (\Delta^2-2C\Delta+\Delta-2C)k_{11} -  (\Delta^2-2C\Delta-\Delta+2C)k_{22} \\ \nonumber
+& - (4C-2\Delta)\Delta(V_1-V_2),
+\,\, \text{if } L=\Delta-C, H=C
+\end{align}
+
+Now the question is to find the maximal violating pair $x_i$ and $x_j$ such that optimizing the objective function with respect to $\alpha_i$ and $\alpha_j$ can approximately reduce the objective function. We follow the working set selection strategy \textbf{WSS3} in Fan \etal.\cite{fan05jmlr}. At each iteration, we update the squared ball center $\|\mathbf{a}\|^2$ and the gradients $\diff{\mathcal{W}}{\vct \alpha}$ denoted as $\varDelta f(\vct \alpha)$. 
+\begin{align}
+\|\mathbf{a}\|^2 =& 	\|\mathbf{a}^*\|^2 + (\alpha_1^2-\alpha_1^{*2})k_{11}+(\alpha_2^2-\alpha_2^{*2})k_{22}+ \\ \nonumber
+&(2\alpha_1\alpha_2-2\alpha_1^*\alpha_2^*)k_{12}+ 
+(\alpha_{\mathbf{B}} - \alpha^*_{\mathbf{B}})^TK_{\mathbf{BN}} \vct\alpha_{\mathbf{N}} \\
+\varDelta f(\vct\alpha) = & \varDelta f(\vct\alpha)^* + 2K_{\mathbf{NB}}(\alpha_{\mathbf{B}} - \alpha^*_{\mathbf{B}})
+\end{align}
+\end{document}

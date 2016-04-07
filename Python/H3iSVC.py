@@ -428,4 +428,3 @@ if __name__ == '__main__':
     # # plt.subplot(1,2,2)
     # # clf2.draw_model(Xtr)
     plt.show()
-
